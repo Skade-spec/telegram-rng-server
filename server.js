@@ -120,6 +120,10 @@ app.get('/rngs', async (req, res) => {
   res.json(data);
 });
 
+app.get('/ping', (req, res) => {
+  console.log("Пинг получен:", new Date().toISOString());
+  res.send("pong");
+});
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`✅ Сервер запущен на порту ${PORT}`));
