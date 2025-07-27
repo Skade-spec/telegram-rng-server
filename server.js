@@ -88,7 +88,7 @@ app.get('/profile/:id', async (req, res) => {
   if (userError || !user) {
     const { data: newUser, error: insertError } = await supabase
       .from('users')
-      .insert({ id }) 
+      .insert({ id: Number(id) }) 
       .select(`
         *,
         title: title_id (
