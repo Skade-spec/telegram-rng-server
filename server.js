@@ -12,18 +12,32 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
 
 function rollByChance(rngs) {
   const pool = [];
+
   rngs.forEach(rng => {
-    for (let i = 0; i < Math.round(100 / rng.chance_ratio); i++) {
+    const entries = Math.max(1, Math.round(100 / rng.chance_ratio));
+    for (let i = 0; i < entries; i++) {
       pool.push(rng);
     }
   });
+
+  if (pool.length === 0) return null;
+
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
+
 app.post('/roll', async (req, res) => {
   const { userId } = req.body;
-  const { data: rngs } = await supabase.from('rngs').select();
+
+  const { data: rngs, error } = await supabase.from('rngs').select();
+  if (error || !rngs || rngs.length === 0) {
+    return res.status(500).json({ error: 'RNG список пуст или не загружается' });
+  }
+
   const selected = rollByChance(rngs);
+  if (!selected) {
+    return res.status(500).json({ error: 'Не удалось выбрать RNG' });
+  }
 
   await supabase.from('users').update({ title_id: selected.id }).eq('id', userId);
   await supabase.from('user_rng_history').insert({ user_id: userId, rng_id: selected.id });
