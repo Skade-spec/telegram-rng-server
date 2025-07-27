@@ -24,7 +24,7 @@ function rollByChance(rngs) {
     if (rand <= cumulative) return rng;
   }
 
-  return rngs[rngs.length - 1]; 
+  return rngs[rngs.length - 1];
 }
 
 app.post('/roll', async (req, res) => {
@@ -38,7 +38,7 @@ app.post('/roll', async (req, res) => {
     .from('rngs')
     .select();
 
-  if (rngError || !rngs || rngs.length === 0) {
+  if (rngError || !rngs?.length) {
     return res.status(500).json({ error: 'Ошибка загрузки RNG' });
   }
 
@@ -53,7 +53,7 @@ app.post('/roll', async (req, res) => {
     .eq('id', userId);
 
   if (updateError) {
-    return res.status(500).json({ error: 'Не удалось обновить пользователя' });
+    return res.status(500).json({ error: 'Не удалось обновить пользователя', details: updateError.message });
   }
 
   const { error: historyError } = await supabase
@@ -61,14 +61,17 @@ app.post('/roll', async (req, res) => {
     .insert({ user_id: userId, rng_id: selected.id });
 
   if (historyError) {
-    return res.status(500).json({ error: 'Не удалось записать историю' });
+    return res.status(500).json({ error: 'Не удалось записать историю', details: historyError.message });
   }
 
   res.json(selected);
 });
 
 app.get('/profile/:id', async (req, res) => {
-  const { id } = req.params;
+  const id = Number(req.params.id);
+  if (!id || isNaN(id)) {
+    return res.status(400).json({ error: 'Некорректный ID пользователя' });
+  }
 
   let { data: user, error: userError } = await supabase
     .from('users')
@@ -96,7 +99,7 @@ app.get('/profile/:id', async (req, res) => {
       .single();
 
     if (insertError) {
-      return res.status(500).json({ error: 'Ошибка при создании пользователя' });
+      return res.status(500).json({ error: 'Ошибка при создании пользователя', details: insertError.message });
     }
 
     return res.json(newUser);
@@ -104,7 +107,6 @@ app.get('/profile/:id', async (req, res) => {
 
   res.json(user);
 });
-
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`✅ Сервер запущен на порту ${PORT}`));
