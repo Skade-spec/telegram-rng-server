@@ -2,13 +2,17 @@ import express from 'express';
 import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+
 dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_KEY
+);
 
 function rollByChance(rngs) {
   const totalWeight = rngs.reduce((sum, rng) => sum + (1 / rng.chance_ratio), 0);
@@ -20,34 +24,70 @@ function rollByChance(rngs) {
     if (rand <= cumulative) return rng;
   }
 
-  return rngs[rngs.length - 1]; // fallback
+  return rngs[rngs.length - 1]; 
 }
-
-
 
 app.post('/roll', async (req, res) => {
   const { userId } = req.body;
 
-  const { data: rngs, error } = await supabase.from('rngs').select();
-  if (error || !rngs || rngs.length === 0) {
-    return res.status(500).json({ error: 'RNG список пуст или не загружается' });
+  if (!userId) {
+    return res.status(400).json({ error: 'userId обязателен' });
+  }
+
+  const { data: rngs, error: rngError } = await supabase
+    .from('rngs')
+    .select();
+
+  if (rngError || !rngs || rngs.length === 0) {
+    return res.status(500).json({ error: 'Ошибка загрузки RNG' });
   }
 
   const selected = rollByChance(rngs);
   if (!selected) {
-    return res.status(500).json({ error: 'Не удалось выбрать RNG' });
+    return res.status(500).json({ error: 'Не удалось выбрать титул' });
   }
 
-  await supabase.from('users').update({ title_id: selected.id }).eq('id', userId);
-  await supabase.from('user_rng_history').insert({ user_id: userId, rng_id: selected.id });
+  const { error: updateError } = await supabase
+    .from('users')
+    .update({ title_id: selected.id })
+    .eq('id', userId);
+
+  if (updateError) {
+    return res.status(500).json({ error: 'Не удалось обновить пользователя' });
+  }
+
+  const { error: historyError } = await supabase
+    .from('user_rng_history')
+    .insert({ user_id: userId, rng_id: selected.id });
+
+  if (historyError) {
+    return res.status(500).json({ error: 'Не удалось записать историю' });
+  }
 
   res.json(selected);
 });
 
 app.get('/profile/:id', async (req, res) => {
   const { id } = req.params;
-  const { data: user } = await supabase.from('users').select('*, title: title_id(label, chance_ratio)').eq('id', id).single();
+
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select(`
+      *,
+      title: title_id (
+        label,
+        chance_ratio
+      )
+    `)
+    .eq('id', id)
+    .single();
+
+  if (userError || !user) {
+    return res.status(404).json({ error: 'Пользователь не найден' });
+  }
+
   res.json(user);
 });
 
-app.listen(4000, () => console.log('Server running on port 4000'));
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, () => console.log(`✅ Сервер запущен на порту ${PORT}`));
