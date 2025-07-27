@@ -70,7 +70,7 @@ app.post('/roll', async (req, res) => {
 app.get('/profile/:id', async (req, res) => {
   const { id } = req.params;
 
-  const { data: user, error: userError } = await supabase
+  let { data: user, error: userError } = await supabase
     .from('users')
     .select(`
       *,
@@ -83,11 +83,28 @@ app.get('/profile/:id', async (req, res) => {
     .single();
 
   if (userError || !user) {
-    return res.status(404).json({ error: 'Пользователь не найден' });
+    const { data: newUser, error: insertError } = await supabase
+      .from('users')
+      .insert({ id }) 
+      .select(`
+        *,
+        title: title_id (
+          label,
+          chance_ratio
+        )
+      `)
+      .single();
+
+    if (insertError) {
+      return res.status(500).json({ error: 'Ошибка при создании пользователя' });
+    }
+
+    return res.json(newUser);
   }
 
   res.json(user);
 });
+
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`✅ Сервер запущен на порту ${PORT}`));
