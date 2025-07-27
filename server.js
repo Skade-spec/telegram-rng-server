@@ -11,7 +11,7 @@ app.use(express.json());
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY // Используем service_role для обхода RLS
 );
 
 function rollByChance(rngs) {
@@ -69,6 +69,8 @@ app.post('/roll', async (req, res) => {
 
 app.get('/profile/:id', async (req, res) => {
   const id = Number(req.params.id);
+  const { username = null, first_name = null } = req.query;
+
   if (!id || isNaN(id)) {
     return res.status(400).json({ error: 'Некорректный ID пользователя' });
   }
@@ -88,7 +90,11 @@ app.get('/profile/:id', async (req, res) => {
   if (userError || !user) {
     const { data: newUser, error: insertError } = await supabase
       .from('users')
-      .insert({ id: Number(id) }) 
+      .insert({
+        id,
+        username,
+        first_name
+      })
       .select(`
         *,
         title: title_id (
