@@ -114,5 +114,12 @@ app.get('/profile/:id', async (req, res) => {
   res.json(user);
 });
 
+app.get('/rngs', async (req, res) => {
+  const { data, error } = await supabase.from('rngs').select();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`✅ Сервер запущен на порту ${PORT}`));
