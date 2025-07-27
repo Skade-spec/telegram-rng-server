@@ -11,19 +11,18 @@ app.use(express.json());
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 function rollByChance(rngs) {
-  const pool = [];
+  const totalWeight = rngs.reduce((sum, rng) => sum + (1 / rng.chance_ratio), 0);
+  const rand = Math.random() * totalWeight;
+  let cumulative = 0;
 
-  rngs.forEach(rng => {
-    const entries = Math.max(1, Math.round(100 / rng.chance_ratio));
-    for (let i = 0; i < entries; i++) {
-      pool.push(rng);
-    }
-  });
+  for (const rng of rngs) {
+    cumulative += 1 / rng.chance_ratio;
+    if (rand <= cumulative) return rng;
+  }
 
-  if (pool.length === 0) return null;
-
-  return pool[Math.floor(Math.random() * pool.length)];
+  return rngs[rngs.length - 1]; // fallback
 }
+
 
 
 app.post('/roll', async (req, res) => {
