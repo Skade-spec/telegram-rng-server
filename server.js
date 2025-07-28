@@ -141,15 +141,15 @@ app.get('/inventory/:userId', async (req, res) => {
 });
 
 app.post('/set-title', async (req, res) => {
-  const { userId, titleId } = req.body;
+  const { userId, rngId } = req.body;
 
-  if (!userId || !titleId) {
-    return res.status(400).json({ error: 'userId и titleId обязательны' });
+  if (!userId || !rngId) {
+    return res.status(400).json({ error: 'userId и rngId обязательны' });
   }
 
   const { error } = await supabase
     .from('users')
-    .update({ title_id: titleId })
+    .update({ title_id: rngId }) // 👈 используем rngId
     .eq('id', userId);
 
   if (error) {
