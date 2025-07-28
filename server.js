@@ -47,9 +47,14 @@ app.post('/roll', async (req, res) => {
     return res.status(500).json({ error: 'Не удалось выбрать титул' });
   }
 
+  // Сохраняем выпадение в user_rng_history (один раз!)
+  await supabase
+    .from('user_rng_history')
+    .upsert({ user_id: userId, rng_id: selected.id }, { onConflict: ['user_id', 'rng_id'] });
 
-  res.json(selected); 
+  res.json(selected); // Клиенту возвращаем сразу то, что уже сохранено
 });
+
 
 
 app.get('/profile/:id', async (req, res) => {
@@ -61,16 +66,25 @@ app.get('/profile/:id', async (req, res) => {
   }
 
   let { data: user, error: userError } = await supabase
-    .from('users')
-    .select(`
-      *,
-      title: title_id (
+  .from('users')
+  .select(`
+    *,
+    title: title_id (
+      label,
+      chance_ratio,
+      id
+    ),
+    inventory:user_rng_history (
+      rngs (
+        id,
         label,
         chance_ratio
       )
-    `)
-    .eq('id', id)
-    .single();
+    )
+  `)
+  .eq('id', id)
+  .single();
+
 
   if (userError || !user) {
     const { data: newUser, error: insertError } = await supabase
