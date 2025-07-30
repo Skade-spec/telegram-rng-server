@@ -45,10 +45,7 @@ app.post('/roll', async (req, res) => {
     return res.status(500).json({ error: 'Не удалось выбрать титул' });
   }
 
-  await supabase
-  .from('users')
-  .update({ rolls_count: supabase.rpc('increment_rolls', { uid: userId }) })
-  .eq('id', userId);
+  await supabase.rpc('increment_rolls', { uid: userId });
 
   await supabase
     .from('user_rng_history')
