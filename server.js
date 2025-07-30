@@ -46,6 +46,11 @@ app.post('/roll', async (req, res) => {
   }
 
   await supabase
+  .from('users')
+  .update({ rolls_count: supabase.rpc('increment_rolls', { uid: userId }) })
+  .eq('id', userId);
+
+  await supabase
     .from('user_rng_history')
     .upsert({ user_id: userId, rng_id: selected.id }, { onConflict: ['user_id', 'rng_id'] });
 
