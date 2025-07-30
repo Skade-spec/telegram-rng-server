@@ -47,7 +47,7 @@ app.post('/roll', async (req, res) => {
 
   console.log('[RPC] UID:', userId, 'Тип:', typeof userId);
 
-  const { data, error} = await supabase.rpc('increment_rolls', { uid: BigInt(userId) }); 
+  const { data, error} = await supabase.rpc('increment_rolls', { uid: Number(userId) }); 
 
   if (error) {
     console.error('err', err);
