@@ -15,28 +15,26 @@ const supabase = createClient(
 );
 
 function rollByChance(rngs) {
-  const totalWeight = rngs.reduce((sum, rng) => sum + (1 / rng.chance_ratio), 0);
-  const rand = Math.random() * totalWeight;
-  let cumulative = 0;
-
-  for (const rng of rngs) {
-    cumulative += 1 / rng.chance_ratio;
-    if (rand <= cumulative) return rng;
+  const weights = rngs.map(rng => 1 / rng.chance_ratio);
+  const total = weights.reduce((sum, w) => sum + w, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < rngs.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return rngs[i];
   }
-
-  return rngs[rngs.length - 1];
+  return rngs[rngs.length - 1]; 
 }
 
 app.post('/roll', async (req, res) => {
   const { userId } = req.body;
-
   if (!userId) {
     return res.status(400).json({ error: 'userId обязателен' });
   }
 
   const { data: rngs, error: rngError } = await supabase
     .from('rngs')
-    .select();
+    .select()
+    .eq('active', true);
 
   if (rngError || !rngs?.length) {
     return res.status(500).json({ error: 'Ошибка загрузки RNG' });
@@ -47,15 +45,12 @@ app.post('/roll', async (req, res) => {
     return res.status(500).json({ error: 'Не удалось выбрать титул' });
   }
 
-  // Сохраняем выпадение в user_rng_history (один раз!)
   await supabase
     .from('user_rng_history')
     .upsert({ user_id: userId, rng_id: selected.id }, { onConflict: ['user_id', 'rng_id'] });
 
-  res.json(selected); // Клиенту возвращаем сразу то, что уже сохранено
+  res.json(selected);
 });
-
-
 
 app.get('/profile/:id', async (req, res) => {
   const id = Number(req.params.id);
@@ -66,25 +61,24 @@ app.get('/profile/:id', async (req, res) => {
   }
 
   let { data: user, error: userError } = await supabase
-  .from('users')
-  .select(`
-    *,
-    title: title_id (
-      label,
-      chance_ratio,
-      id
-    ),
-    inventory:user_rng_history (
-      rngs (
-        id,
+    .from('users')
+    .select(`
+      *,
+      title: title_id (
         label,
-        chance_ratio
+        chance_ratio,
+        id
+      ),
+      inventory:user_rng_history (
+        rngs (
+          id,
+          label,
+          chance_ratio
+        )
       )
-    )
-  `)
-  .eq('id', id)
-  .single();
-
+    `)
+    .eq('id', id)
+    .single();
 
   if (userError || !user) {
     const { data: newUser, error: insertError } = await supabase
@@ -110,7 +104,11 @@ app.get('/profile/:id', async (req, res) => {
 });
 
 app.get('/rngs', async (req, res) => {
-  const { data, error } = await supabase.from('rngs').select();
+  const { data, error } = await supabase
+    .from('rngs')
+    .select()
+    .eq('active', true);
+
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
@@ -149,7 +147,7 @@ app.post('/set-title', async (req, res) => {
 
   const { error } = await supabase
     .from('users')
-    .update({ title_id: rngId }) // 👈 используем rngId
+    .update({ title_id: rngId })
     .eq('id', userId);
 
   if (error) {
