@@ -253,7 +253,17 @@ app.post('/sell', async (req, res) => {
     return res.status(500).json({ error: 'Ошибка при начислении монет', details: rpcError.message });
   }
 
-  res.json({ success: true, coins });
+  const { data: updatedUser, error: profileError } = await supabase
+    .from('users')
+    .select('money')
+    .eq('id', userId)
+    .single();
+
+  if (profileError || !updatedUser) {
+    return res.status(500).json({ error: 'Ошибка при получении обновлённого профиля', details: profileError?.message });
+  }
+
+  res.json({ success: true, coins, money: updatedUser.money });
 });
 
 app.get('/ping', (req, res) => {
