@@ -28,7 +28,6 @@ function rollByChance(rngs, boost = 1) {
   });
 
   const totalWeight = boostedWeights.reduce((acc, w) => acc + w, 0);
-  console.log(`📊 Total weight: ${totalWeight}`);
 
   let r = Math.random() * totalWeight;
   for (let i = 0; i < validRngs.length; i++) {
