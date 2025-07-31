@@ -51,10 +51,11 @@ app.post('/roll', async (req, res) => {
 
   function getBoost(rolls) {
     for (const level of boostLevels) {
-      if (rolls >= level.threshold) return level.boost;
+      if ((rolls + 1) % level.threshold === 0) return level.boost;
     }
     return 1;
   }
+
 
   const { data: user, error: userError } = await supabase
     .from('users')
