@@ -47,7 +47,6 @@ app.post('/roll', async (req, res) => {
     return res.status(400).json({ error: 'userId обязателен' });
   }
 
-  // Получаем пользователя, чтобы узнать rolls_count
   const { data: user, error: userError } = await supabase
     .from('users')
     .select('rolls_count')
