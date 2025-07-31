@@ -20,7 +20,14 @@ function rollByChance(rngs, boost = 1) {
   const weights = validRngs.map(rng => (1 / rng.chance_ratio) * boost);
   const total = weights.reduce((sum, w) => sum + w, 0);
 
+  console.log('🔎 Debug rollByChance:');
+  console.log('RNGs:', rngs.map(r => [r.label, r.chance_ratio]));
+  console.log('Valid RNGs:', validRngs.map(r => [r.label, r.chance_ratio]));
+  console.log('Weights:', weights);
+  console.log('Total weight:', total);
+
   if (!total || isNaN(total)) {
+    console.warn('⚠️ rollByChance: total weight is invalid (NaN or 0)');
     return null; 
   }
 
@@ -29,10 +36,6 @@ function rollByChance(rngs, boost = 1) {
     r -= weights[i];
     if (r <= 0) return validRngs[i];
   }
-
-  console.log('weights:', weights);
-  console.log('total:', total);
-  console.log('rngs:', rngs.map(r => [r.label, r.chance_ratio]));
 
   return validRngs[validRngs.length - 1];
 }
