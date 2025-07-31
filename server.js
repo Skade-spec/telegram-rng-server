@@ -16,17 +16,20 @@ const supabase = createClient(
 
 function rollByChance(rngs, boost = 1) {
   const validRngs = rngs.filter(rng => Number(rng.chance_ratio) > 0);
-  const baseWeights = validRngs.map(rng => 1 / Number(rng.chance_ratio));
+
+  const baseWeights = validRngs.map(rng => 1 / rng.chance_ratio);
+
   const maxWeight = Math.max(...baseWeights);
 
-  const boostedWeights = baseWeights.map(w => 
-    w * (1 + (boost - 1) * (w / maxWeight))
-  );
+  const boostedWeights = baseWeights.map(w => {
+    const relativeStrength = w / maxWeight;
+    const boosted = w + (1 - relativeStrength) * w * (boost - 1);
+    return boosted;
+  });
 
   const total = boostedWeights.reduce((sum, w) => sum + w, 0);
-
-  console.log('⚖️ Boosted weights:', boostedWeights);
-  console.log('📊 Total weight:', total);
+  console.log("⚖️ Boosted Weights:", boostedWeights);
+  console.log("📊 Total weight:", total);
 
   if (!total || isNaN(total)) {
     console.warn('⚠️ rollByChance: total weight is invalid (NaN or 0)');
@@ -41,8 +44,6 @@ function rollByChance(rngs, boost = 1) {
 
   return validRngs[validRngs.length - 1];
 }
-
-
 
 app.post('/roll', async (req, res) => {
   const { userId } = req.body;
