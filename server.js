@@ -46,10 +46,10 @@ app.post('/roll', async (req, res) => {
   if (!userId) return res.status(400).json({ error: 'userId обязателен' });
 
   const boostLevels = [
-    { threshold: 10000, boost: 100000 },
-    { threshold: 1000, boost: 10000 },
-    { threshold: 300, boost: 1000 },
-    { threshold: 100, boost: 100 },
+    { threshold: 10000, boost: 10000 },
+    { threshold: 1000, boost: 1000 },
+    { threshold: 300, boost: 100 },
+    { threshold: 100, boost: 50 },
     { threshold: 10, boost: 10 },
   ];
 
@@ -223,6 +223,37 @@ app.post('/inventory/keep', async (req, res) => {
 
   res.json({ success: true });
 });
+
+app.post('/sell', async (req, res) => {
+  const { userId, rngId } = req.body;
+
+  if (!userId || !rngId) {
+    return res.status(400).json({ error: 'userId и rngId обязательны' });
+  }
+
+  const { data: rng, error: rngError } = await supabase
+    .from('rngs')
+    .select('chance_ratio')
+    .eq('id', rngId)
+    .single();
+
+  if (rngError || !rng) {
+    return res.status(500).json({ error: 'Ошибка при получении титула', details: rngError.message });
+  }
+
+  const coins = rng.chance_ratio;
+
+  const { error: updateError } = await supabase
+    .from('users')
+    .update({ money: supabase.raw(`money + ${coins}`) })
+    .eq('id', userId);
+
+  if (updateError) {
+    return res.status(500).json({ error: 'Не удалось обновить баланс', details: updateError.message });
+  }
+  res.json({ success: true, coins });
+});
+
 
 app.get('/ping', (req, res) => {
   console.log("Пинг получен:", new Date().toISOString());
