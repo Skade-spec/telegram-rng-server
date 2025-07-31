@@ -3,6 +3,8 @@ import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 
+import { getBoost, rollByChance } from './utils/rollLogic.js'; 
+
 dotenv.config();
 
 const PORT = process.env.PORT || 4000;
@@ -16,51 +18,9 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-function rollByChance(rngs, boost = 1) {
-  const validRngs = rngs.filter(rng => {
-    const ratio = Number(rng.chance_ratio);
-    return ratio > 0 && ratio >= boost;
-  });
-
-  if (validRngs.length === 0) return null; 
-
-  const baseWeights = validRngs.map(rng => 1 / rng.chance_ratio);
-  const maxWeight = Math.max(...baseWeights);
-
-  const boostedWeights = baseWeights.map(w => {
-    const rarityFactor = Math.log(maxWeight / w + 1); 
-    return w * (1 + rarityFactor * (boost - 1));
-  });
-
-  const totalWeight = boostedWeights.reduce((acc, w) => acc + w, 0);
-  let r = Math.random() * totalWeight;
-
-  for (let i = 0; i < validRngs.length; i++) {
-    r -= boostedWeights[i];
-    if (r <= 0) return validRngs[i];
-  }
-
-  return validRngs[validRngs.length - 1];
-}
-
 app.post('/roll', async (req, res) => {
   const { userId } = req.body;
   if (!userId) return res.status(400).json({ error: 'userId обязателен' });
-
-  const boostLevels = [
-    { threshold: 10000, boost: 10000 },
-    { threshold: 1000, boost: 1000 },
-    { threshold: 300, boost: 100 },
-    { threshold: 100, boost: 50 },
-    { threshold: 10, boost: 10 },
-  ];
-
-  function getBoost(rolls) {
-    for (const level of boostLevels) {
-      if ((rolls + 1) % level.threshold === 0) return level.boost;
-    }
-    return 1;
-  }
 
   const { data: user, error: userError } = await supabase
     .from('users')
@@ -304,7 +264,7 @@ app.post('/roll-seasonal', async (req, res) => {
 
   const { data: user, error: userError } = await supabase
     .from('users')
-    .select('money')
+    .select('money, rolls_count')
     .eq('id', userId)
     .single();
 
@@ -316,6 +276,8 @@ app.post('/roll-seasonal', async (req, res) => {
     return res.status(400).json({ error: 'Недостаточно монет' });
   }
 
+  const rolls = user.rolls_count || 0;
+
   const { data: rngs, error: rngsError } = await supabase
     .from('rngs')
     .select()
@@ -326,18 +288,8 @@ app.post('/roll-seasonal', async (req, res) => {
     return res.status(500).json({ error: 'Нет титулов для сезона' });
   }
 
-  const totalWeight = rngs.reduce((sum, r) => sum + (1 / r.chance_ratio), 0);
-  const rand = Math.random() * totalWeight;
-
-  let cumulative = 0;
-  let selected = null;
-  for (const rng of rngs) {
-    cumulative += 1 / rng.chance_ratio;
-    if (rand <= cumulative) {
-      selected = rng;
-      break;
-    }
-  }
+  const boost = getBoost(rolls);
+  const selected = rollByChance(rngs, boost);
 
   if (!selected) {
     return res.status(500).json({ error: 'Не удалось выбрать титул' });
@@ -352,7 +304,17 @@ app.post('/roll-seasonal', async (req, res) => {
     return res.status(500).json({ error: 'Не удалось списать монеты' });
   }
 
-  res.json({ title: selected });
+  await supabase.rpc('increment_rolls', { uid: Number(userId) });
+
+  res.json({
+    title: selected,
+    boost,
+    rolls_count: rolls + 1,
+    progress: {
+      toDouble: 10 - ((rolls + 1) % 10),
+      toTenfold: 300 - ((rolls + 1) % 300),
+    },
+  });
 });
 
 app.get('/season', async (req, res) => {
