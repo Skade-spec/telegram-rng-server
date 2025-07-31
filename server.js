@@ -117,15 +117,17 @@ app.get('/profile/:id', async (req, res) => {
     .select(`
       *,
       title: title_id (
+        id,
         label,
         chance_ratio,
-        id
+        season
       ),
       inventory:user_rng_history (
         rngs (
           id,
           label,
-          chance_ratio
+          chance_ratio,
+          season
         )
       )
     `)
@@ -139,8 +141,10 @@ app.get('/profile/:id', async (req, res) => {
       .select(`
         *,
         title: title_id (
+          id,
           label,
-          chance_ratio
+          chance_ratio,
+          season
         )
       `)
       .single();
