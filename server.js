@@ -5,6 +5,8 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+const PORT = process.env.PORT || 4000;
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -231,7 +233,6 @@ app.post('/sell', async (req, res) => {
     return res.status(400).json({ error: 'userId и rngId обязательны' });
   }
 
-  // Получить шанс титула
   const { data: rng, error: rngError } = await supabase
     .from('rngs')
     .select('chance_ratio')
@@ -271,5 +272,4 @@ app.get('/ping', (req, res) => {
   res.send("pong");
 });
 
-const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`✅ Сервер запущен на порту ${PORT}`));
