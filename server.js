@@ -15,21 +15,24 @@ const supabase = createClient(
 );
 
 function rollByChance(rngs, boost = 1) {
-  const validRngs = rngs.filter(rng => Number(rng.chance_ratio) > 0);
+  const validRngs = rngs.filter(rng => {
+    const ratio = Number(rng.chance_ratio);
+    return ratio > 0 && ratio >= boost;
+  });
+
+  if (validRngs.length === 0) return null; 
 
   const baseWeights = validRngs.map(rng => 1 / rng.chance_ratio);
-
   const maxWeight = Math.max(...baseWeights);
 
   const boostedWeights = baseWeights.map(w => {
     const rarityFactor = Math.log(maxWeight / w + 1); 
-    const boosted = w * (1 + rarityFactor * (boost - 1));
-    return boosted;
+    return w * (1 + rarityFactor * (boost - 1));
   });
 
   const totalWeight = boostedWeights.reduce((acc, w) => acc + w, 0);
-
   let r = Math.random() * totalWeight;
+
   for (let i = 0; i < validRngs.length; i++) {
     r -= boostedWeights[i];
     if (r <= 0) return validRngs[i];
@@ -37,7 +40,6 @@ function rollByChance(rngs, boost = 1) {
 
   return validRngs[validRngs.length - 1];
 }
-
 
 app.post('/roll', async (req, res) => {
   const { userId } = req.body;
