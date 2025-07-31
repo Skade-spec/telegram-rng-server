@@ -267,6 +267,73 @@ app.post('/sell', async (req, res) => {
   res.json({ success: true, coins, money: updatedUser.money });
 });
 
+app.post('/roll-seasonal', async (req, res) => {
+  const { userId } = req.body;
+  const SEASON_ID = 1;
+  const PRICE = 50;
+
+  if (!userId) {
+    return res.status(400).json({ error: 'userId обязателен' });
+  }
+
+  // Проверка баланса
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select('money')
+    .eq('id', userId)
+    .single();
+
+  if (userError || !user) {
+    return res.status(500).json({ error: 'Пользователь не найден' });
+  }
+
+  if (user.money < PRICE) {
+    return res.status(400).json({ error: 'Недостаточно монет' });
+  }
+
+  // Получить титулы текущего сезона
+  const { data: rngs, error: rngsError } = await supabase
+    .from('rngs')
+    .select()
+    .eq('season', SEASON_ID)
+    .eq('active', true);
+
+  if (rngsError || !rngs?.length) {
+    return res.status(500).json({ error: 'Нет титулов для сезона' });
+  }
+
+  // Алгоритм выбора
+  const totalWeight = rngs.reduce((sum, r) => sum + (1 / r.chance_ratio), 0);
+  const rand = Math.random() * totalWeight;
+
+  let cumulative = 0;
+  let selected = null;
+  for (const rng of rngs) {
+    cumulative += 1 / rng.chance_ratio;
+    if (rand <= cumulative) {
+      selected = rng;
+      break;
+    }
+  }
+
+  if (!selected) {
+    return res.status(500).json({ error: 'Не удалось выбрать титул' });
+  }
+
+  // Списать монеты
+  const { error: moneyError } = await supabase
+    .from('users')
+    .update({ money: user.money - PRICE })
+    .eq('id', userId);
+
+  if (moneyError) {
+    return res.status(500).json({ error: 'Не удалось списать монеты' });
+  }
+
+  res.json({ title: selected });
+});
+
+
 app.get('/ping', (req, res) => {
   console.log("Пинг получен:", new Date().toISOString());
   res.send("pong");
