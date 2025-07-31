@@ -231,6 +231,7 @@ app.post('/sell', async (req, res) => {
     return res.status(400).json({ error: 'userId и rngId обязательны' });
   }
 
+  // Получить шанс титула
   const { data: rng, error: rngError } = await supabase
     .from('rngs')
     .select('chance_ratio')
@@ -243,17 +244,17 @@ app.post('/sell', async (req, res) => {
 
   const coins = rng.chance_ratio;
 
-  const { error: updateError } = await supabase
-    .from('users')
-    .update({ money: supabase.raw(`money + ${coins}`) })
-    .eq('id', userId);
+  const { error: rpcError } = await supabase.rpc('add_money', {
+    uid: userId,
+    amount: coins
+  });
 
-  if (updateError) {
-    return res.status(500).json({ error: 'Не удалось обновить баланс', details: updateError.message });
+  if (rpcError) {
+    return res.status(500).json({ error: 'Ошибка при начислении монет', details: rpcError.message });
   }
+
   res.json({ success: true, coins });
 });
-
 
 app.get('/ping', (req, res) => {
   console.log("Пинг получен:", new Date().toISOString());
