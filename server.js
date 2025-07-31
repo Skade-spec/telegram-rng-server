@@ -62,7 +62,6 @@ app.post('/roll', async (req, res) => {
     return 1;
   }
 
-
   const { data: user, error: userError } = await supabase
     .from('users')
     .select('rolls_count')
@@ -93,10 +92,21 @@ app.post('/roll', async (req, res) => {
 
   await supabase.rpc('increment_rolls', { uid: Number(userId) });
 
+  const { data: updatedUser, error: updatedUserError } = await supabase
+    .from('users')
+    .select('money')
+    .eq('id', userId)
+    .single();
+
+  if (updatedUserError || !updatedUser) {
+    return res.status(500).json({ error: 'Ошибка при получении баланса' });
+  }
+
   res.json({
     selected,
     rolls_count: rolls + 1,
     boost,
+    money: updatedUser.money,
     progress: {
       toDouble: 10 - ((rolls + 1) % 10),
       toTenfold: 300 - ((rolls + 1) % 300),
@@ -273,7 +283,6 @@ app.post('/sell', async (req, res) => {
 });
 
 app.post('/roll-seasonal', async (req, res) => {
-
   const { userId } = req.body;
 
   if (!userId) {
