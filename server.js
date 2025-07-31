@@ -22,21 +22,15 @@ function rollByChance(rngs, boost = 1) {
   const maxWeight = Math.max(...baseWeights);
 
   const boostedWeights = baseWeights.map(w => {
-    const relativeStrength = w / maxWeight;
-    const boosted = w + (1 - relativeStrength) * w * (boost - 1);
+    const rarityFactor = Math.log(maxWeight / w + 1); 
+    const boosted = w * (1 + rarityFactor * (boost - 1));
     return boosted;
   });
 
-  const total = boostedWeights.reduce((sum, w) => sum + w, 0);
-  console.log("⚖️ Boosted Weights:", boostedWeights);
-  console.log("📊 Total weight:", total);
+  const totalWeight = boostedWeights.reduce((acc, w) => acc + w, 0);
+  console.log(`📊 Total weight: ${totalWeight}`);
 
-  if (!total || isNaN(total)) {
-    console.warn('⚠️ rollByChance: total weight is invalid (NaN or 0)');
-    return null;
-  }
-
-  let r = Math.random() * total;
+  let r = Math.random() * totalWeight;
   for (let i = 0; i < validRngs.length; i++) {
     r -= boostedWeights[i];
     if (r <= 0) return validRngs[i];
@@ -44,6 +38,7 @@ function rollByChance(rngs, boost = 1) {
 
   return validRngs[validRngs.length - 1];
 }
+
 
 app.post('/roll', async (req, res) => {
   const { userId } = req.body;
