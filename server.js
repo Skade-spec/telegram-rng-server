@@ -15,15 +15,28 @@ const supabase = createClient(
 );
 
 function rollByChance(rngs, boost = 1) {
-  const weights = rngs.map(rng => (1 / rng.chance_ratio) * boost);
+  const validRngs = rngs.filter(rng => Number(rng.chance_ratio) > 0);
+
+  const weights = validRngs.map(rng => (1 / rng.chance_ratio) * boost);
   const total = weights.reduce((sum, w) => sum + w, 0);
-  let r = Math.random() * total;
-  for (let i = 0; i < rngs.length; i++) {
-    r -= weights[i];
-    if (r <= 0) return rngs[i];
+
+  if (!total || isNaN(total)) {
+    return null; 
   }
-  return rngs[rngs.length - 1];
+
+  let r = Math.random() * total;
+  for (let i = 0; i < validRngs.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return validRngs[i];
+  }
+
+  console.log('weights:', weights);
+  console.log('total:', total);
+  console.log('rngs:', rngs.map(r => [r.label, r.chance_ratio]));
+
+  return validRngs[validRngs.length - 1];
 }
+
 
 app.post('/roll', async (req, res) => {
   const { userId } = req.body;
