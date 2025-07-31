@@ -19,13 +19,13 @@ function rollByChance(rngs, boost = 1) {
   const baseWeights = validRngs.map(rng => 1 / Number(rng.chance_ratio));
   const maxWeight = Math.max(...baseWeights);
 
-  const boostedWeights = baseWeights.map(w =>
-    w === maxWeight ? w * boost : w
+  const boostedWeights = baseWeights.map(w => 
+    w * (1 + (boost - 1) * (w / maxWeight))
   );
 
   const total = boostedWeights.reduce((sum, w) => sum + w, 0);
 
-  console.log('⚖️ Weights:', boostedWeights);
+  console.log('⚖️ Boosted weights:', boostedWeights);
   console.log('📊 Total weight:', total);
 
   if (!total || isNaN(total)) {
@@ -41,6 +41,7 @@ function rollByChance(rngs, boost = 1) {
 
   return validRngs[validRngs.length - 1];
 }
+
 
 
 app.post('/roll', async (req, res) => {
