@@ -44,6 +44,7 @@ app.post('/roll', async (req, res) => {
   if (!userId) return res.status(400).json({ error: 'userId обязателен' });
 
   const boostLevels = [
+    { threshold: 10000, boost: 1000 },
     { threshold: 1000, boost: 100 },
     { threshold: 300, boost: 10 },
     { threshold: 100, boost: 5 },
