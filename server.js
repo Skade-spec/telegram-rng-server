@@ -16,8 +16,7 @@ const supabase = createClient(
 
 function rollByChance(rngs, boost = 1) {
   const validRngs = rngs.filter(rng => Number(rng.chance_ratio) > 0);
-
-  const weights = validRngs.map(rng => (1 / rng.chance_ratio) * boost);
+  const weights = validRngs.map(rng => (1 / Number(rng.chance_ratio)) * boost);
   const total = weights.reduce((sum, w) => sum + w, 0);
 
   console.log('⚖️ Weights:', weights);
@@ -34,14 +33,12 @@ function rollByChance(rngs, boost = 1) {
     if (r <= 0) return validRngs[i];
   }
 
-  return validRngs[validRngs.length - 1]; 
+  return validRngs[validRngs.length - 1];
 }
 
 app.post('/roll', async (req, res) => {
   const { userId } = req.body;
-  if (!userId) {
-    return res.status(400).json({ error: 'userId обязателен' });
-  }
+  if (!userId) return res.status(400).json({ error: 'userId обязателен' });
 
   const boostLevels = [
     { threshold: 300, boost: 10 },
@@ -50,9 +47,7 @@ app.post('/roll', async (req, res) => {
 
   function getBoost(rolls) {
     for (const level of boostLevels) {
-      if (rolls >= level.threshold) {
-        return level.boost;
-      }
+      if (rolls >= level.threshold) return level.boost;
     }
     return 1;
   }
@@ -68,12 +63,11 @@ app.post('/roll', async (req, res) => {
   }
 
   const rolls = user.rolls_count || 0;
-
   const boost = getBoost(rolls);
 
   const { data: rngs, error: rngError } = await supabase
     .from('rngs')
-    .select()
+    .select('*')
     .eq('active', true);
 
   if (rngError || !rngs?.length) {
@@ -92,12 +86,11 @@ app.post('/roll', async (req, res) => {
     rolls_count: rolls + 1,
     boost,
     progress: {
-      toDouble: (rolls + 1) % 10,
-      toTenfold: (rolls + 1) % 300,
-    }
+      toDouble: 10 - ((rolls + 1) % 10),
+      toTenfold: 300 - ((rolls + 1) % 300),
+    },
   });
 });
-
 
 app.get('/profile/:id', async (req, res) => {
   const id = Number(req.params.id);
