@@ -20,11 +20,9 @@ function rollByChance(rngs, boost = 1) {
   const weights = validRngs.map(rng => (1 / rng.chance_ratio) * boost);
   const total = weights.reduce((sum, w) => sum + w, 0);
 
-  console.log('🔎 Debug rollByChance:');
-  console.log('RNGs:', rngs.map(r => [r.label, r.chance_ratio]));
-  console.log('Valid RNGs:', validRngs.map(r => [r.label, r.chance_ratio]));
-  console.log('Weights:', weights);
-  console.log('Total weight:', total);
+  console.log('🎯 Rolls:', rolls, 'Boost:', boost);
+  console.log('⚖️ Weights:', weights);
+  console.log('📊 Total weight:', total);
 
   if (!total || isNaN(total)) {
     console.warn('⚠️ rollByChance: total weight is invalid (NaN or 0)');
@@ -40,6 +38,19 @@ function rollByChance(rngs, boost = 1) {
   return validRngs[validRngs.length - 1];
 }
 
+const boostLevels = [
+  { threshold: 300, boost: 10 },
+  { threshold: 10, boost: 2 },
+];
+
+function getBoost(rolls) {
+  for (const level of boostLevels) {
+    if (rolls >= level.threshold) {
+      return level.boost;
+    }
+  }
+  return 1;
+}
 
 app.post('/roll', async (req, res) => {
   const { userId } = req.body;
@@ -59,12 +70,7 @@ app.post('/roll', async (req, res) => {
 
   const rolls = user.rolls_count || 0;
 
-  let boost = 1;
-  if (rolls >= 300) {
-    boost = 10;
-  } else if (rolls >= 10) {
-    boost = 2;
-  }
+  const boost = getBoost(rolls);
 
   const { data: rngs, error: rngError } = await supabase
     .from('rngs')
