@@ -79,6 +79,7 @@ app.post('/roll', async (req, res) => {
   const { data: rngs, error: rngError } = await supabase
     .from('rngs')
     .select('*')
+    .eq('season', 0)
     .eq('active', true);
 
   if (rngError || !rngs?.length) {
