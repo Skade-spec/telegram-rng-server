@@ -14,21 +14,41 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-function rollByChance(rngs) {
-  const weights = rngs.map(rng => 1 / rng.chance_ratio);
+function rollByChance(rngs, boost = 1) {
+  const weights = rngs.map(rng => (1 / rng.chance_ratio) * boost);
   const total = weights.reduce((sum, w) => sum + w, 0);
   let r = Math.random() * total;
   for (let i = 0; i < rngs.length; i++) {
     r -= weights[i];
     if (r <= 0) return rngs[i];
   }
-  return rngs[rngs.length - 1]; 
+  return rngs[rngs.length - 1];
 }
 
 app.post('/roll', async (req, res) => {
   const { userId } = req.body;
   if (!userId) {
     return res.status(400).json({ error: 'userId обязателен' });
+  }
+
+  // Получаем пользователя, чтобы узнать rolls_count
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select('rolls_count')
+    .eq('id', userId)
+    .single();
+
+  if (userError || !user) {
+    return res.status(500).json({ error: 'Ошибка при загрузке пользователя' });
+  }
+
+  const rolls = user.rolls_count || 0;
+
+  let boost = 1;
+  if (rolls >= 300) {
+    boost = 10;
+  } else if (rolls >= 10) {
+    boost = 2;
   }
 
   const { data: rngs, error: rngError } = await supabase
@@ -40,15 +60,24 @@ app.post('/roll', async (req, res) => {
     return res.status(500).json({ error: 'Ошибка загрузки RNG' });
   }
 
-  const selected = rollByChance(rngs);
+  const selected = rollByChance(rngs, boost);
   if (!selected) {
     return res.status(500).json({ error: 'Не удалось выбрать титул' });
   }
 
-  await supabase.rpc('increment_rolls', { uid: Number(userId) }); 
+  await supabase.rpc('increment_rolls', { uid: Number(userId) });
 
-  res.json(selected);
+  res.json({
+    selected,
+    rolls_count: rolls + 1,
+    boost,
+    progress: {
+      toDouble: (rolls + 1) % 10,
+      toTenfold: (rolls + 1) % 300,
+    }
+  });
 });
+
 
 app.get('/profile/:id', async (req, res) => {
   const id = Number(req.params.id);
