@@ -20,7 +20,6 @@ function rollByChance(rngs, boost = 1) {
   const weights = validRngs.map(rng => (1 / rng.chance_ratio) * boost);
   const total = weights.reduce((sum, w) => sum + w, 0);
 
-  console.log('🎯 Rolls:', rolls, 'Boost:', boost);
   console.log('⚖️ Weights:', weights);
   console.log('📊 Total weight:', total);
 
@@ -38,24 +37,24 @@ function rollByChance(rngs, boost = 1) {
   return validRngs[validRngs.length - 1];
 }
 
-const boostLevels = [
-  { threshold: 300, boost: 10 },
-  { threshold: 10, boost: 2 },
-];
-
-function getBoost(rolls) {
-  for (const level of boostLevels) {
-    if (rolls >= level.threshold) {
-      return level.boost;
-    }
-  }
-  return 1;
-}
-
 app.post('/roll', async (req, res) => {
   const { userId } = req.body;
   if (!userId) {
     return res.status(400).json({ error: 'userId обязателен' });
+  }
+
+  const boostLevels = [
+    { threshold: 300, boost: 10 },
+    { threshold: 10, boost: 2 },
+  ];
+
+  function getBoost(rolls) {
+    for (const level of boostLevels) {
+      if (rolls >= level.threshold) {
+        return level.boost;
+      }
+    }
+    return 1;
   }
 
   const { data: user, error: userError } = await supabase
