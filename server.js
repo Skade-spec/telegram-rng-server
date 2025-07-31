@@ -269,15 +269,26 @@ app.post('/sell', async (req, res) => {
 });
 
 app.post('/roll-seasonal', async (req, res) => {
+
   const { userId } = req.body;
-  const SEASON_ID = 1;
-  const PRICE = 50;
 
   if (!userId) {
     return res.status(400).json({ error: 'userId обязателен' });
   }
 
-  // Проверка баланса
+  const { data: season, error: seasonError } = await supabase
+    .from('seasons')
+    .select()
+    .eq('active', true)
+    .single();
+
+  if (seasonError || !season) {
+    return res.status(500).json({ error: 'Текущий сезон не найден' });
+  }
+
+  const SEASON_ID = season.id;
+  const PRICE = season.price;
+
   const { data: user, error: userError } = await supabase
     .from('users')
     .select('money')
@@ -292,7 +303,6 @@ app.post('/roll-seasonal', async (req, res) => {
     return res.status(400).json({ error: 'Недостаточно монет' });
   }
 
-  // Получить титулы текущего сезона
   const { data: rngs, error: rngsError } = await supabase
     .from('rngs')
     .select()
@@ -303,7 +313,6 @@ app.post('/roll-seasonal', async (req, res) => {
     return res.status(500).json({ error: 'Нет титулов для сезона' });
   }
 
-  // Алгоритм выбора
   const totalWeight = rngs.reduce((sum, r) => sum + (1 / r.chance_ratio), 0);
   const rand = Math.random() * totalWeight;
 
@@ -321,7 +330,6 @@ app.post('/roll-seasonal', async (req, res) => {
     return res.status(500).json({ error: 'Не удалось выбрать титул' });
   }
 
-  // Списать монеты
   const { error: moneyError } = await supabase
     .from('users')
     .update({ money: user.money - PRICE })
@@ -334,6 +342,19 @@ app.post('/roll-seasonal', async (req, res) => {
   res.json({ title: selected });
 });
 
+app.get('/season', async (req, res) => {
+  const { data: season, error } = await supabase
+    .from('seasons')
+    .select()
+    .eq('active', true)
+    .single();
+
+  if (error || !season) {
+    return res.status(500).json({ error: 'Текущий сезон не найден' });
+  }
+
+  res.json(season);
+});
 
 app.get('/ping', (req, res) => {
   console.log("Пинг получен:", new Date().toISOString());
