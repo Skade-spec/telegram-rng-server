@@ -225,5 +225,5 @@ app.get('/ping', (req, res) => {
   res.send("pong");
 });
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`✅ Сервер запущен на порту ${PORT}`));
