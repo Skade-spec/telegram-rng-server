@@ -17,7 +17,7 @@ const supabase = createClient(
 function rollByChance(rngs, boost = 1) {
   const validRngs = rngs.filter(rng => Number(rng.chance_ratio) > 0);
 
-  const weights = validRngs.map(rng => (1 / rng.chance_ratio) * boost);
+  const weights = validRngs.map(rng => 1 / (rng.chance_ratio / boost));
   const total = weights.reduce((sum, w) => sum + w, 0);
 
   console.log('⚖️ Weights:', weights);
@@ -25,7 +25,7 @@ function rollByChance(rngs, boost = 1) {
 
   if (!total || isNaN(total)) {
     console.warn('⚠️ rollByChance: total weight is invalid (NaN or 0)');
-    return null; 
+    return null;
   }
 
   let r = Math.random() * total;
@@ -34,7 +34,7 @@ function rollByChance(rngs, boost = 1) {
     if (r <= 0) return validRngs[i];
   }
 
-  return validRngs[validRngs.length - 1];
+  return validRngs[validRngs.length - 1]; 
 }
 
 app.post('/roll', async (req, res) => {
